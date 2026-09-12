@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import db from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +8,22 @@ import { BookOpen, Sparkles, X, ChevronDown, ChevronUp, Lock, Unlock } from "luc
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import { BIBLE_BOOKS } from "@/lib/bibleData";
+
+const API_BIBLE_BOOK_IDS = {
+  Genesis: "GEN", Exodus: "EXO", Leviticus: "LEV", Numbers: "NUM", Deuteronomy: "DEU",
+  Joshua: "JOS", Judges: "JDG", Ruth: "RUT", "1 Samuel": "1SA", "2 Samuel": "2SA",
+  "1 Kings": "1KI", "2 Kings": "2KI", "1 Chronicles": "1CH", "2 Chronicles": "2CH",
+  Ezra: "EZR", Nehemiah: "NEH", Esther: "EST", Job: "JOB", Psalms: "PSA", Proverbs: "PRO",
+  Ecclesiastes: "ECC", "Song of Solomon": "SNG", Isaiah: "ISA", Jeremiah: "JER", Lamentations: "LAM",
+  Ezekiel: "EZK", Daniel: "DAN", Hosea: "HOS", Joel: "JOL", Amos: "AMO", Obadiah: "OBA",
+  Jonah: "JON", Micah: "MIC", Nahum: "NAM", Habakkuk: "HAB", Zephaniah: "ZEP", Haggai: "HAG",
+  Zechariah: "ZEC", Malachi: "MAL", Matthew: "MAT", Mark: "MRK", Luke: "LUK", John: "JHN",
+  Acts: "ACT", Romans: "ROM", "1 Corinthians": "1CO", "2 Corinthians": "2CO", Galatians: "GAL",
+  Ephesians: "EPH", Philippians: "PHP", Colossians: "COL", "1 Thessalonians": "1TH",
+  "2 Thessalonians": "2TH", "1 Timothy": "1TI", "2 Timothy": "2TI", Titus: "TIT", Philemon: "PHM",
+  Hebrews: "HEB", James: "JAS", "1 Peter": "1PE", "2 Peter": "2PE", "1 John": "1JN",
+  "2 John": "2JN", "3 John": "3JN", Jude: "JUD", Revelation: "REV",
+};
 
 export default function DevotionForm({
   onSubmit,
@@ -22,6 +39,11 @@ export default function DevotionForm({
   const [passageLoading, setPassageLoading] = useState(false);
   const [passageError, setPassageError] = useState("");
   const [isVerseLocked, setIsVerseLocked] = useState(Boolean(initialVerse));
+  const [bibleVersion, setBibleVersion] = useState({
+    id: import.meta.env.VITE_NLT_BIBLE_ID || "",
+    name: "New Living Translation",
+    abbreviation: "NLT",
+  });
 
   const today = format(new Date(), "MMMM d, yyyy");
 
@@ -55,6 +77,25 @@ export default function DevotionForm({
     setIsVerseLocked(Boolean(initialVerse));
   }, [initialVerse, initialNotes]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadBibleVersion() {
+      try {
+        const user = await db.auth.me();
+        const savedVersion = user?.user_metadata?.bible_version;
+        if (savedVersion?.id && !cancelled) setBibleVersion(savedVersion);
+      } catch (error) {
+        console.warn("Could not load preferred Bible version", error);
+      }
+    }
+
+    loadBibleVersion();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const bookData = BIBLE_BOOKS.find((b) => b.name === selectedBook);
   const chapterCount = bookData?.chapters?.length || 0;
   const verseCount =
@@ -82,6 +123,14 @@ export default function DevotionForm({
 
   const verse = getVerseString();
 
+  const getApiBiblePassageId = () => {
+    const bookId = API_BIBLE_BOOK_IDS[selectedBook];
+    if (!bookId || !selectedChapter || !verseStart) return "";
+
+    const start = `${bookId}.${selectedChapter}.${verseStart}`;
+    return verseEnd ? `${start}-${bookId}.${selectedChapter}.${verseEnd}` : start;
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!verse || !notes.trim()) return;
@@ -102,7 +151,7 @@ export default function DevotionForm({
       }
 
       const apiKey = import.meta.env.VITE_API_BIBLE_KEY;
-      const bibleId = import.meta.env.VITE_NLT_BIBLE_ID;
+      const bibleId = bibleVersion.id || import.meta.env.VITE_NLT_BIBLE_ID;
 
       if (!apiKey || !bibleId) {
         setPassagePreview("");
@@ -115,30 +164,50 @@ export default function DevotionForm({
       setPassageError("");
 
       try {
-        const url = new URL(`https://rest.api.bible/v1/bibles/${bibleId}/search`);
-        url.searchParams.set("query", verse);
-        url.searchParams.set("content-type", "html");
+        const headers = { "api-key": apiKey };
+        const passageId = getApiBiblePassageId();
+        let text = "";
 
-        const res = await fetch(url.toString(), {
+        if (passageId) {
+          const url = new URL(`https://rest.api.bible/v1/bibles/${bibleId}/passages/${passageId}`);
+          url.searchParams.set("content-type", "html");
+          url.searchParams.set("include-notes", "false");
+          url.searchParams.set("include-titles", "true");
+          url.searchParams.set("include-chapter-numbers", "false");
+          url.searchParams.set("include-verse-numbers", "true");
+
+          const response = await fetch(url.toString(), { headers });
+          if (response.ok) {
+            const data = await response.json();
+            text = data?.data?.content || "";
+          }
+        }
+
+        if (!text) {
+          const searchUrl = new URL(`https://rest.api.bible/v1/bibles/${bibleId}/search`);
+          searchUrl.searchParams.set("query", verse);
+          searchUrl.searchParams.set("content-type", "html");
+
+          const res = await fetch(searchUrl.toString(), {
           headers: {
             "api-key": apiKey,
           },
-        });
+          });
 
-        if (!res.ok) {
-          throw new Error(`Passage lookup failed (${res.status})`);
+          if (!res.ok) {
+            throw new Error(`Passage lookup failed (${res.status})`);
+          }
+
+          const data = await res.json();
+          text =
+            data?.data?.passages?.[0]?.content ||
+            data?.data?.passages?.[0]?.text ||
+            data?.data?.verses?.[0]?.content ||
+            data?.data?.verses?.[0]?.text ||
+            "";
         }
 
-        const data = await res.json();
-
         if (cancelled) return;
-
-        const text =
-          data?.data?.passages?.[0]?.content ||
-          data?.data?.passages?.[0]?.text ||
-          data?.data?.verses?.[0]?.content ||
-          data?.data?.verses?.[0]?.text ||
-          "";
 
         setPassagePreview(text || "No passage text returned.");
       } catch (err) {
@@ -156,7 +225,7 @@ export default function DevotionForm({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [verse]);
+  }, [verse, bibleVersion.id]);
 
   const formattedPassage = passagePreview.replace(
   /<span[^>]*class="v"[^>]*>(\d+)<\/span>/g,
@@ -316,7 +385,7 @@ export default function DevotionForm({
                   {showPreview ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                   {showPreview ? "Hide Passage Preview" : "Show Passage Preview"}
                 </span>
-                <span className="text-xs text-muted-foreground">NLT</span>
+                <span className="text-xs text-muted-foreground">{bibleVersion.abbreviation || "NLT"}</span>
               </Button>
 
               <AnimatePresence>

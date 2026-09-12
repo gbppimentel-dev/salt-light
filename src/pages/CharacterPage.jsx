@@ -1,5 +1,5 @@
 import db from "@/api/base44Client";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useCharacter } from "@/lib/useCharacter";
 import { getJobById, getTitle } from "@/lib/gameData";
 import CharacterAvatar from "@/components/character/CharacterAvatar";
@@ -12,6 +12,7 @@ import FriendsPanel from "@/components/character/FriendsPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -73,6 +74,28 @@ function ExportSectionTitle({ children }) {
   );
 }
 
+const BIBLE_VERSION_CHOICES = [
+  { key: "nlt", name: "New Living Translation", abbreviation: "NLT", language: "English", matches: ["nlt", "new living translation"] },
+  { key: "niv", name: "New International Version", abbreviation: "NIV", language: "English", matches: ["niv", "new international version"] },
+  { key: "message", name: "The Message", abbreviation: "MSG", language: "English", matches: ["msg", "the message", "message bible"] },
+  { key: "kjv", name: "King James Version", abbreviation: "KJV", language: "English", matches: ["kjv", "king james version"] },
+];
+
+function matchesBibleVersion(bible, choice) {
+  const details = [
+    bible?.abbreviation,
+    bible?.abbreviationLocal,
+    bible?.name,
+    bible?.nameLocal,
+    bible?.description,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return choice.matches.some((match) => details.includes(match));
+}
+
 export default function CharacterPage() {
   const {
     character,
@@ -101,6 +124,86 @@ export default function CharacterPage() {
     typeof window !== "undefined" &&
     document.documentElement.classList.contains("dark")
   );
+  const [bibleVersion, setBibleVersion] = useState({ key: "nlt", name: "New Living Translation", abbreviation: "NLT" });
+  const [availableBibleVersions, setAvailableBibleVersions] = useState([]);
+  const [bibleVersionsLoading, setBibleVersionsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadBibleVersions() {
+      try {
+        const user = await db.auth.me();
+        const savedVersion = user?.user_metadata?.bible_version;
+        if (savedVersion?.id && !cancelled) {
+          setBibleVersion(savedVersion);
+        }
+
+        const apiKey = import.meta.env.VITE_API_BIBLE_KEY;
+        if (!apiKey) return;
+
+        const response = await fetch("https://rest.api.bible/v1/bibles", {
+          headers: { "api-key": apiKey },
+        });
+        if (!response.ok) throw new Error("Could not load Bible versions.");
+
+        const data = await response.json();
+        const bibles = data?.data || [];
+        const available = BIBLE_VERSION_CHOICES.map((choice) => {
+          const bible = bibles.find((item) => matchesBibleVersion(item, choice));
+          return {
+            ...choice,
+            id: bible?.id || "",
+          };
+        });
+
+        if (!cancelled) setAvailableBibleVersions(available);
+      } catch (error) {
+        console.warn("Could not load Bible versions", error);
+        if (!cancelled) {
+          setAvailableBibleVersions(BIBLE_VERSION_CHOICES.map((choice) => ({ ...choice, id: "" })));
+        }
+      } finally {
+        if (!cancelled) setBibleVersionsLoading(false);
+      }
+    }
+
+    loadBibleVersions();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleBibleVersionChange = async (choiceKey) => {
+    const selected = availableBibleVersions.find((choice) => choice.key === choiceKey);
+    if (!selected?.id) {
+      toast.error("That Bible version is not available with your current API.Bible key.");
+      return;
+    }
+
+    const nextVersion = {
+      key: selected.key,
+      id: selected.id,
+      name: selected.name,
+      abbreviation: selected.abbreviation,
+      language: selected.language,
+    };
+
+    try {
+      const user = await db.auth.me();
+      await db.auth.updateUser({
+        data: {
+          ...(user?.user_metadata || {}),
+          bible_version: nextVersion,
+        },
+      });
+      setBibleVersion(nextVersion);
+      toast.success(`${nextVersion.abbreviation} is now your Bible version.`);
+    } catch (error) {
+      console.error("Failed to save Bible version", error);
+      toast.error("Could not save your Bible version.");
+    }
+  };
 
   const toggleTheme = () => {
     const next = !isDark;
@@ -471,6 +574,43 @@ export default function CharacterPage() {
               )}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="font-display text-base">Bible Version</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <p className="text-sm font-medium">Preferred translation</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              This version is used automatically for your Devotion passage previews.
+            </p>
+          </div>
+
+          <Select
+            value={bibleVersion.key || "nlt"}
+            onValueChange={handleBibleVersionChange}
+            disabled={bibleVersionsLoading}
+          >
+            <SelectTrigger className="min-h-[44px]">
+              <SelectValue placeholder="Choose a Bible version" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableBibleVersions.map((choice) => (
+                <SelectItem key={choice.key} value={choice.key} disabled={!choice.id}>
+                  {choice.abbreviation} — {choice.name} ({choice.language})
+                  {!choice.id ? " — unavailable" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <p className="text-xs text-muted-foreground">
+            Current version: <span className="font-semibold text-foreground">{bibleVersion.abbreviation || "NLT"}</span>
+            {bibleVersion.name ? ` — ${bibleVersion.name}` : ""}
+          </p>
         </CardContent>
       </Card>
 
