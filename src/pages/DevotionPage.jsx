@@ -17,6 +17,41 @@ import { format, subDays } from "date-fns";
 
 const BASE_DEVOTION_XP = 20;
 
+// LifeCity Church of Christ — Superbook: September 2026
+// Add the next month's dates and passages here when the church sends a new schedule.
+const CHURCH_DEVOTION_SCHEDULE = {
+  "2026-09-01": "2 Timothy 2:1-2",
+  "2026-09-02": "2 Timothy 2:3-7",
+  "2026-09-03": "2 Timothy 2:8-10",
+  "2026-09-04": "2 Timothy 2:11-13",
+  "2026-09-05": "2 Timothy 2:14-19",
+  "2026-09-06": "2 Timothy 2:20-21",
+  "2026-09-07": "2 Timothy 2:22-26",
+  "2026-09-08": "2 Timothy 3:1-5",
+  "2026-09-09": "2 Timothy 3:6-9",
+  "2026-09-10": "2 Timothy 3:10-17",
+  "2026-09-11": "2 Timothy 4:1-5",
+  "2026-09-12": "2 Timothy 4:6-8",
+  "2026-09-13": "2 Timothy 4:9-22",
+  "2026-09-14": "Titus 1:1-4",
+  "2026-09-15": "Titus 1:5-9",
+  "2026-09-16": "Titus 1:10-16",
+  "2026-09-17": "Titus 2:1-5",
+  "2026-09-18": "Titus 2:6-10",
+  "2026-09-19": "Titus 2:11-15",
+  "2026-09-20": "Titus 3:1-2",
+  "2026-09-21": "Titus 3:3-7",
+  "2026-09-22": "Titus 3:8-11",
+  "2026-09-23": "Titus 3:12-15",
+  "2026-09-24": "Philemon 1:1-7",
+  "2026-09-25": "Philemon 1:8-16",
+  "2026-09-26": "Philemon 1:17-25",
+  "2026-09-27": "James 1:1-8",
+  "2026-09-28": "James 1:9-12",
+  "2026-09-29": "James 1:13-18",
+  "2026-09-30": "James 1:19-25",
+};
+
 function computeStreak(devotions) {
   if (!devotions || devotions.length === 0) return 0;
   const dates = [...new Set(devotions.map((d) => d.date))].sort().reverse();
@@ -48,6 +83,7 @@ export default function DevotionPage() {
   });
 
   const today = format(new Date(), "yyyy-MM-dd");
+  const scheduledVerse = CHURCH_DEVOTION_SCHEDULE[today] || "";
   const todayDevotion = devotions.find((d) => d.date === today);
   const streak = computeStreak(devotions);
   const baseXPToday = BASE_DEVOTION_XP + Math.max(0, streak - 1) * 5;
@@ -253,7 +289,7 @@ await db.entities.ActivityLog.create({
         ) : (
           <DevotionForm
             key={editing ? "edit" : "new"}
-            initialVerse={editing ? todayDevotion?.bible_verse : ""}
+            initialVerse={editing ? todayDevotion?.bible_verse : scheduledVerse}
             initialNotes={editing ? todayDevotion?.notes : ""}
             onSubmit={editing ? updateDevotion.mutate : createDevotion.mutate}
             onCancel={editing ? () => setEditing(false) : undefined}

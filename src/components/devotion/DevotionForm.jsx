@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BookOpen, Sparkles, X, ChevronDown, ChevronUp } from "lucide-react";
+import { BookOpen, Sparkles, X, ChevronDown, ChevronUp, Lock, Unlock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import { BIBLE_BOOKS } from "@/lib/bibleData";
@@ -21,6 +21,7 @@ export default function DevotionForm({
   const [passagePreview, setPassagePreview] = useState("");
   const [passageLoading, setPassageLoading] = useState(false);
   const [passageError, setPassageError] = useState("");
+  const [isVerseLocked, setIsVerseLocked] = useState(Boolean(initialVerse));
 
   const today = format(new Date(), "MMMM d, yyyy");
 
@@ -43,6 +44,16 @@ export default function DevotionForm({
   const [selectedChapter, setSelectedChapter] = useState(parsed.chapter);
   const [verseStart, setVerseStart] = useState(parsed.verseStart);
   const [verseEnd, setVerseEnd] = useState(parsed.verseEnd);
+
+  useEffect(() => {
+    const nextVerse = parseInitialVerse();
+    setSelectedBook(nextVerse.book);
+    setSelectedChapter(nextVerse.chapter);
+    setVerseStart(nextVerse.verseStart);
+    setVerseEnd(nextVerse.verseEnd);
+    setNotes(initialNotes);
+    setIsVerseLocked(Boolean(initialVerse));
+  }, [initialVerse, initialNotes]);
 
   const bookData = BIBLE_BOOKS.find((b) => b.name === selectedBook);
   const chapterCount = bookData?.chapters?.length || 0;
@@ -177,7 +188,46 @@ export default function DevotionForm({
             <div className="space-y-2">
               <label className="text-sm font-medium">Bible Verse</label>
 
-              <Select value={selectedBook} onValueChange={handleBookChange}>
+              {initialVerse && (
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isVerseLocked}
+                  onClick={() => setIsVerseLocked((current) => !current)}
+                  className="w-full flex items-center justify-between gap-3 rounded-xl border bg-muted/30 px-3 py-2.5 text-left transition-colors hover:bg-muted/50"
+                >
+                  <span className="flex items-center gap-2 text-sm">
+                    {isVerseLocked ? (
+                      <Lock className="w-4 h-4 text-muted-foreground" />
+                    ) : (
+                      <Unlock className="w-4 h-4 text-amber-600" />
+                    )}
+                    <span>
+                      <span className="block font-medium">
+                        {isVerseLocked ? "Book, Chapter, and Verses are Locked" : "Bible passage override enabled"}
+                      </span>
+                      <span className="block text-xs text-muted-foreground mt-0.5">
+                        {isVerseLocked
+                          ? "Reading is based on Endure 2026, Superbook. Turn this off if you want to change or extend today's assigned reading."
+                          : "You can choose a different or longer passage."}
+                      </span>
+                    </span>
+                  </span>
+                  <span
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                      isVerseLocked ? "bg-primary" : "bg-muted-foreground/30"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 rounded-full bg-background shadow-sm transition-transform ${
+                        isVerseLocked ? "translate-x-5" : "translate-x-1"
+                      }`}
+                    />
+                  </span>
+                </button>
+              )}
+
+              <Select value={selectedBook} onValueChange={handleBookChange} disabled={isVerseLocked}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select Book…" />
                 </SelectTrigger>
@@ -191,7 +241,7 @@ export default function DevotionForm({
               </Select>
 
               {selectedBook && (
-                <Select value={selectedChapter} onValueChange={handleChapterChange}>
+                <Select value={selectedChapter} onValueChange={handleChapterChange} disabled={isVerseLocked}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select Chapter…" />
                   </SelectTrigger>
@@ -209,6 +259,7 @@ export default function DevotionForm({
                 <div className="flex items-center gap-2">
                   <Select
                     value={verseStart}
+                    disabled={isVerseLocked}
                     onValueChange={(v) => {
                       setVerseStart(v);
                       setVerseEnd("");
@@ -231,6 +282,7 @@ export default function DevotionForm({
                       <span className="text-sm text-muted-foreground shrink-0">to (optional)</span>
                       <Select
                         value={verseEnd || "__none__"}
+                        disabled={isVerseLocked}
                         onValueChange={(v) => setVerseEnd(v === "__none__" ? "" : v)}
                       >
                         <SelectTrigger className="flex-1">
