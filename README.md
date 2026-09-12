@@ -10,6 +10,7 @@ Users can:
 - Track spiritual growth
 - View recent activity and progression
 - Use the app as a mobile-friendly PWA
+- Use as standalone APP
 
 ---
 
