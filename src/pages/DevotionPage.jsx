@@ -278,7 +278,7 @@ await db.entities.ActivityLog.create({
           </Card>
         </motion.div>
 
-        {/* Recent entries */}
+        {/* Recent Entries */}
         {devotions.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
