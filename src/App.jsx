@@ -22,6 +22,7 @@ import LoginPage from "@/pages/LoginPage";
 import FeedbackPage from "@/pages/FeedbackPage";
 import MailPage from "@/pages/MailPage";
 import AchievementsPage from "@/pages/AchievementsPage";
+import TechStackPage from "@/pages/TechStackPage";
 import ClickSpark from "@/components/ClickSpark";
 
 function FloatingFeedbackBubble() {
@@ -78,6 +79,7 @@ function App() {
                   <Route path="/mail" element={<MailPage />} />
                   <Route path="/feedback" element={<FeedbackPage />} />
                   <Route path="/achievements" element={<AchievementsPage />} />
+                  <Route path="/built-with" element={<TechStackPage />} />
                 </Route>
               </Route>
 

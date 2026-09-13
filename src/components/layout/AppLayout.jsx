@@ -187,6 +187,13 @@ export default function AppLayout() {
       “So whether you eat or drink or whatever you do, do it all for the glory of God.”
       — 1 Corinthians 10:31
     </p>
+
+    <Link
+      to="/built-with"
+      className="mt-2 inline-flex min-h-[28px] items-center text-[10px] transition-colors hover:text-primary"
+    >
+      Built with intention
+    </Link>
   </div>
 </footer>
 
