@@ -50,7 +50,7 @@ export function AuthProvider({ children }) {
       authEvent,
       isPasswordRecovery,
 
-      // Compatibility with old app code
+      // Compatibility with existing app code
       isLoadingAuth: loading,
       isLoadingPublicSettings: false,
       authChecked: !loading,
@@ -58,7 +58,6 @@ export function AuthProvider({ children }) {
       isAuthenticated,
       checkUserAuth: async () => {},
 
-      // Temporary helper for later
       navigateToLogin: () => {
         window.location.href = "/login";
       },
@@ -72,6 +71,27 @@ export function AuthProvider({ children }) {
       signUp: (email, password) =>
         supabase.auth.signUp({
           email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/login`,
+          },
+        }),
+
+      signInWithGoogle: () =>
+        supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: `${window.location.origin}/login`,
+          },
+        }),
+
+      sendPasswordReset: (email) =>
+        supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/login?mode=recovery`,
+        }),
+
+      updatePassword: (password) =>
+        supabase.auth.updateUser({
           password,
         }),
 

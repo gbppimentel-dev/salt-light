@@ -1,70 +1,43 @@
-import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  ArrowRight,
+  BookOpen,
+  Heart,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
-import { Eye, EyeOff } from "lucide-react";
 
-function PasswordInput({
-  label,
-  value,
-  onChange,
-  autoComplete,
-  placeholder,
-  isSubmitting,
-  visible,
-  onToggleVisible,
-  required = true,
-}) {
+function GoogleIcon() {
   return (
-    <div>
-      <label className="block text-sm mb-1">{label}</label>
-      <div className="relative">
-        <input
-          className="w-full rounded-lg border px-3 py-2 pr-12 bg-background"
-          type={visible ? "text" : "password"}
-          value={value}
-          onChange={onChange}
-          autoComplete={autoComplete}
-          placeholder={placeholder}
-          required={required}
-          disabled={isSubmitting}
-        />
-        <button
-          type="button"
-          onClick={onToggleVisible}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:text-foreground"
-          aria-label={visible ? "Hide password" : "Show password"}
-          disabled={isSubmitting}
-        >
-          {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-        </button>
-      </div>
-    </div>
+    <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="#4285F4"
+        d="M21.35 12.27c0-.79-.07-1.55-.2-2.27H12v4.3h5.23a4.47 4.47 0 0 1-1.94 2.94v2.78h3.15c1.84-1.69 2.91-4.18 2.91-7.75Z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 21.75c2.62 0 4.82-.87 6.43-2.36l-3.15-2.78c-.87.59-1.99.94-3.28.94-2.52 0-4.66-1.7-5.42-3.99H3.32v2.87A9.72 9.72 0 0 0 12 21.75Z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M6.58 13.56A5.85 5.85 0 0 1 6.28 12c0-.54.1-1.06.3-1.56V7.57H3.32A9.72 9.72 0 0 0 2.25 12c0 1.57.38 3.06 1.07 4.43l3.26-2.87Z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 6.45c1.43 0 2.72.49 3.73 1.45l2.8-2.8C16.82 3.51 14.62 2.25 12 2.25a9.72 9.72 0 0 0-8.68 5.32l3.26 2.87C7.34 8.15 9.48 6.45 12 6.45Z"
+      />
+    </svg>
   );
 }
 
 export default function LoginPage() {
-  const { signIn, signUp, user, loading } = useAuth();
+  const { signInWithGoogle, user, loading } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const searchParams = useMemo(
-    () => new URLSearchParams(location.search),
-    [location.search]
-  );
-
-  const urlMode = searchParams.get("mode");
-  const isResetRoute = urlMode === "reset" || urlMode === "recovery";
-
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [mode, setMode] = useState("login"); // login | signup
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showForgotHelper, setShowForgotHelper] = useState(false);
 
   useEffect(() => {
     if (!loading && user) {
@@ -72,178 +45,122 @@ export default function LoginPage() {
     }
   }, [loading, user, navigate]);
 
-  useEffect(() => {
-    if (isResetRoute) {
-      setShowForgotHelper(true);
-      setMessage("Password recovery is temporarily disabled while we fix bugs.");
-      navigate("/login", { replace: true });
-    }
-  }, [isResetRoute, navigate]);
-
-  async function handleSubmit(e) {
-    e.preventDefault();
+  async function handleGoogleSignIn() {
     setError("");
-    setMessage("");
     setIsSubmitting(true);
 
     try {
-      if (mode === "login") {
-        const { error } = await signIn(email, password);
-        if (error) throw error;
-        navigate("/", { replace: true });
-        return;
-      }
+      const { error: googleError } = await signInWithGoogle();
 
-      if (mode === "signup") {
-        if (password !== confirmPassword) {
-          throw new Error("Passwords do not match.");
-        }
-
-        const { data, error } = await signUp(email, password);
-        if (error) throw error;
-
-        if (data?.session) {
-          navigate("/", { replace: true });
-        } else {
-          setMessage(
-            "Account created. Check your email if confirmation is enabled, then log in."
-          );
-        }
+      if (googleError) {
+        throw googleError;
       }
     } catch (err) {
-      const msg = err?.message || "Something went wrong";
-      setError(
-        msg === "email rate limit exceeded"
-          ? "Email rate limit exceeded. Turn off email confirmation in Supabase or wait before trying again."
-          : msg
-      );
-    } finally {
+      setError(err?.message || "Google sign-in failed. Please try again.");
       setIsSubmitting(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-background">
-      <div className="w-full max-w-md rounded-2xl border p-6 shadow-sm bg-card">
-        <h1 className="text-2xl font-bold mb-2">Salt &amp; Light</h1>
+    <div className="min-h-screen bg-background px-4 py-8 flex items-center justify-center">
+      <main className="w-full max-w-4xl overflow-hidden rounded-3xl border bg-card shadow-xl">
+        <div className="grid md:grid-cols-2">
+          <section className="relative overflow-hidden bg-primary p-8 text-primary-foreground sm:p-10">
+            <div className="absolute -right-20 -top-20 h-52 w-52 rounded-full bg-white/10" />
+            <div className="absolute -bottom-24 -left-16 h-52 w-52 rounded-full bg-white/10" />
 
-        <p className="text-sm text-muted-foreground mb-6">
-          {mode === "login" && "Log in to continue"}
-          {mode === "signup" && "Create your account"}
-        </p>
+            <div className="relative">
+              <div className="mb-10 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-sm font-medium">
+                <Sparkles className="h-4 w-4" />
+                Salt &amp; Light
+              </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm mb-1">Email</label>
-            <input
-              className="w-full rounded-lg border px-3 py-2 bg-background"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              required
-              disabled={isSubmitting}
-            />
-          </div>
+              <h1 className="max-w-sm text-3xl font-bold tracking-tight sm:text-4xl">
+                Grow faithfully, one day at a time.
+              </h1>
 
-          {mode === "login" && (
-            <PasswordInput
-              label="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              placeholder="Enter your password"
-              isSubmitting={isSubmitting}
-              visible={showPassword}
-              onToggleVisible={() => setShowPassword((v) => !v)}
-            />
-          )}
+              <p className="mt-4 max-w-sm text-sm leading-6 text-primary-foreground/80 sm:text-base">
+                Build intentional habits, reflect on God&apos;s Word, and make
+                meaningful progress in your Christian life.
+              </p>
 
-          {mode === "signup" && (
-            <>
-              <PasswordInput
-                label="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="new-password"
-                placeholder="Create a password"
-                isSubmitting={isSubmitting}
-                visible={showPassword}
-                onToggleVisible={() => setShowPassword((v) => !v)}
-              />
+              <div className="mt-10 space-y-4">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15">
+                    <BookOpen className="h-4 w-4" />
+                  </span>
+                  <span className="text-sm">Keep your devotions in one place</span>
+                </div>
 
-              <PasswordInput
-                label="Confirm password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                autoComplete="new-password"
-                placeholder="Re-enter your password"
-                isSubmitting={isSubmitting}
-                visible={showConfirmPassword}
-                onToggleVisible={() => setShowConfirmPassword((v) => !v)}
-              />
-            </>
-          )}
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15">
+                    <Heart className="h-4 w-4" />
+                  </span>
+                  <span className="text-sm">
+                    Turn daily faith into meaningful progress
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
 
-          {mode === "login" && (
-            <button
-              type="button"
-              className="mt-2 text-xs underline text-muted-foreground hover:text-foreground"
-              onClick={() => {
-                setShowForgotHelper((prev) => !prev);
-                setError("");
-                setMessage("");
-              }}
-              disabled={isSubmitting}
-            >
-              Forgot password?
-            </button>
-          )}
+          <section className="flex flex-col justify-center p-8 sm:p-10">
+            <div className="mx-auto w-full max-w-sm">
+              <p className="text-sm font-medium text-muted-foreground">
+                Welcome to Salt &amp; Light
+              </p>
 
-          {showForgotHelper && (
-            <p className="text-xs text-muted-foreground -mt-2">
-              Password recovery is temporarily disabled while we fix bugs.
-            </p>
-          )}
+              <h2 className="mt-2 text-2xl font-bold tracking-tight">
+                Continue your journey
+              </h2>
 
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
-          {message ? <p className="text-sm text-green-600">{message}</p> : null}
+              <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                Sign in securely with Google to access your personal faith
+                journey.
+              </p>
 
-          <button
-            type="submit"
-            className="w-full rounded-lg bg-black text-white py-2 font-medium disabled:opacity-60"
-            disabled={isSubmitting}
-          >
-            {isSubmitting
-              ? "Please wait..."
-              : mode === "login"
-              ? "Log In"
-              : "Sign Up"}
-          </button>
-        </form>
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={isSubmitting}
+                className="mt-8 flex w-full items-center justify-center gap-3 rounded-xl border bg-background px-4 py-3 font-medium transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <GoogleIcon />
+                <span>
+                  {isSubmitting ? "Opening Google..." : "Continue with Google"}
+                </span>
+                {!isSubmitting && <ArrowRight className="ml-auto h-4 w-4" />}
+              </button>
 
-        <div className="mt-4 space-y-2">
-          <button
-            type="button"
-            className="text-sm underline block"
-            onClick={() => {
-              setMode(mode === "login" ? "signup" : "login");
-              setError("");
-              setMessage("");
-              setPassword("");
-              setConfirmPassword("");
-              setShowPassword(false);
-              setShowConfirmPassword(false);
-              setShowForgotHelper(false);
-            }}
-            disabled={isSubmitting}
-          >
-            {mode === "login"
-              ? "Need an account? Sign up"
-              : "Already have an account? Log in"}
-          </button>
+              {error && (
+                <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+                  {error}
+                </p>
+              )}
+
+              <div className="my-7 h-px bg-border" />
+
+              <div className="rounded-xl bg-muted/60 p-4">
+                <div className="flex gap-3">
+                  <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+
+                  <div>
+                    <p className="text-sm font-medium">No password needed</p>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      New here? Your Salt &amp; Light account is created
+                      automatically the first time you continue with Google.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* <p className="mt-6 text-center text-xs leading-5 text-muted-foreground">
+                by continuing, you agree to use Salt &amp; Light 
+              </p> */}
+            </div>
+          </section>
         </div>
-      </div>
+      </main>
     </div>
   );
 }
