@@ -19,7 +19,7 @@ const stackGroups = [
     ],
   },
   {
-    title: "Backend & integrations",
+    title: "Backend & Integrations",
     description: "Identity, data, security, and Scripture content.",
     items: [
       { name: "Supabase", detail: "Backend-as-a-service and client SDK", icon: "supabase", color: "3ECF8E" },
@@ -31,7 +31,7 @@ const stackGroups = [
     ],
   },
   {
-    title: "App delivery",
+    title: "App Delivery",
     description: "Web deployment, installation, and mobile packaging.",
     items: [
       { name: "Vercel", detail: "Web hosting and deployment", icon: "vercel", color: "000000" },
@@ -43,7 +43,7 @@ const stackGroups = [
     ],
   },
   {
-    title: "Tools & supporting libraries",
+    title: "Tools & Supporting Libraries",
     description: "Development workflow, feedback, exports, and content presentation.",
     items: [
       { name: "Visual Studio Code", detail: "Primary code editor", icon: "visualstudiocode", color: "007ACC" },
@@ -95,14 +95,11 @@ export default function TechStackPage() {
               <Code2 className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="font-display text-2xl font-bold tracking-tight">Built with intention</h1>
+              <h1 className="font-display text-2xl font-bold tracking-tight">Built with Intention</h1>
               <p className="mt-1 text-sm text-muted-foreground">The tools behind Salt &amp; Light.</p>
             </div>
           </div>
         </div>
-        <span className="hidden rounded-full border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground sm:block">
-          {stackGroups.reduce((total, group) => total + group.items.length, 0)} technologies
-        </span>
       </div>
 
       <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/10 via-card to-accent/10">

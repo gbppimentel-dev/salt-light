@@ -192,7 +192,7 @@ export default function AppLayout() {
       to="/built-with"
       className="mt-2 inline-flex min-h-[28px] items-center text-[10px] transition-colors hover:text-primary"
     >
-      Built with intention
+      Tech Stack
     </Link>
   </div>
 </footer>
